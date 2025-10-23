@@ -143,13 +143,28 @@ setInterval(pollMetrics, 500);
 
 // Poll K8s API every 5s via kubectl proxy
 async function pollPods() {
-    try {
-        const res = await fetch("/pods");
-        const data = await res.json();
-        podsEl.textContent = String(data.count);
-    } catch {
-        podsEl.textContent = "?";
-    }
+  try {
+    const r = await fetch("/kube-metrics");
+    const data = await r.json();
+    const pods = data.items || [];
+    const backendPods = pods.filter(p => p.metadata.labels?.app === "backend");
+
+    // 🎯 Number of backend pods
+    podsEl.textContent = backendPods.length;
+
+    // 🎯 Average CPU across pods
+    const cpuVals = backendPods.map(p => {
+      const val = p.containers[0].usage.cpu;
+      if (val.endsWith("n")) return parseInt(val) / 1e6;
+      if (val.endsWith("m")) return parseInt(val);
+      return parseInt(val) * 1000;
+    });
+    const avgCpu = d3.mean(cpuVals) || 0;
+
+    updateGraphs(0, avgCpu);
+  } catch (e) {
+    podsEl.textContent = "?";
+  }
 }
 
 setInterval(pollPods, 1000);

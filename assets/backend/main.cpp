@@ -110,7 +110,21 @@ int main() {
     snprintf(buf, sizeof(buf), "{\"cpu_pct\":%.1f}", pct);
     res.set_content(buf, "application/json");
 });
-
+svr.Get("/kube-metrics", [&](const httplib::Request&, httplib::Response& res) {
+    std::string output;
+    FILE* pipe = popen("kubectl get --raw /apis/metrics.k8s.io/v1beta1/namespaces/demo-autoscale/pods", "r");
+    if (!pipe) {
+        res.status = 500;
+        res.set_content("{\"error\": \"failed to run kubectl\"}", "application/json");
+        return;
+    }
+    char buffer[8192];
+    while (fgets(buffer, sizeof(buffer), pipe)) {
+        output += buffer;
+    }
+    pclose(pipe);
+    res.set_content(output, "application/json");
+});
 svr.Get("/pods", [&](const httplib::Request&, httplib::Response& res) {
     FILE* pipe = popen("kubectl get pods -n demo-autoscale -l app=backend --no-headers | wc -l", "r");
     if (!pipe) {
