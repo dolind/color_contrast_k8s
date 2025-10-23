@@ -42,4 +42,9 @@ for APP in "${IMAGES[@]}"; do
 
   echo "✅ Verified images for ${APP}:"
   sudo ctr -n k8s.io images ls | grep "${APP}" || echo "❌ Missing on controlplane"
-  for node in "${NODES[@]}"
+  for node in "${NODES[@]}"; do
+    ssh "${node}" "sudo ctr -n k8s.io images ls | grep ${APP} || echo '❌ Missing on ${node}'"
+  done
+done
+
+echo "🎉 All images synced to all nodes."
