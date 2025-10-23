@@ -135,7 +135,7 @@ setInterval(pollMetrics, 500);
 // Poll K8s API every 5s via kubectl proxy
 async function pollPods() {
   try {
-    const r = await fetch("/api/v1/namespaces/demo-autoscale/pods?labelSelector=app=cpu-demo");
+    const r = await fetch("/pods");
     const data = await r.json();
     const count = data.items?.length || 0;
     podsEl.textContent = String(count);
@@ -144,6 +144,7 @@ async function pollPods() {
   }
 }
 setInterval(pollPods, 1000);
+
 pollPods();
 
 loop();

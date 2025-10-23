@@ -102,6 +102,23 @@ int main() {
         res.set_content(json.str(), "application/json");
     });
 
+    // pod stats
+    svr.Get("/pods", [&](const httplib::Request&, httplib::Response& res) {
+    std::string output;
+    FILE* pipe = popen("kubectl get pods -n demo-autoscale -l app=backend -o json", "r");
+    if (!pipe) {
+        res.status = 500;
+        res.set_content("{\"error\": \"failed to run kubectl\"}", "application/json");
+        return;
+    }
+    char buffer[4096];
+    while (fgets(buffer, sizeof(buffer), pipe)) {
+        output += buffer;
+    }
+    pclose(pipe);
+    res.set_content(output, "application/json");
+});
+
     std::cout << "Listening on 0.0.0.0:8080" << std::endl;
     svr.listen("0.0.0.0", 8080);
 }
