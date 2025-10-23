@@ -56,7 +56,7 @@ metadata:
   name: backend
   namespace: demo-autoscale
 spec:
-  replicas: 1
+  replicas: 2  # start with one per node
   selector:
     matchLabels:
       app: backend
@@ -65,8 +65,7 @@ spec:
       labels:
         app: backend
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: node01        # only worker nodes
+      # remove nodeSelector entirely
       containers:
       - name: backend
         image: backend:latest
@@ -104,6 +103,7 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
+
 ---
 # ----------------------------------------------------------------------
 # HPA for backend
