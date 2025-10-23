@@ -47,6 +47,7 @@
 <div class="pill">Inflight: <span id="inflight">0</span></div>
 <div class="pill">Completed/s: <span id="rps">0</span></div>
 <div class="pill">Errors: <span id="errs">0</span></div>
+<div class="pill">Pods: <span id="pods">1</span></div>
 <p>
     - Inflight: is the number of requests that have been sent to the backend but not yet received a response.
     Analog to real usage: the number of users waiting for a response.
@@ -54,7 +55,9 @@
     - Done: Completed requests. Real usage: users that have received a response.
     <br>
     - Errors: Requests that failed. Real usage: users that encountered an error.
+    - Pods: Number of pods in the deployment.
 </p>
+
 <svg id="respGraph" width="650" height="220"></svg>
 <svg id="cpuGraph" width="650" height="220"></svg>
 

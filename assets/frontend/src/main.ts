@@ -10,6 +10,7 @@ const workLabel  = document.getElementById("workVal")!;
 const inflightEl = document.getElementById("inflight")!;
 const rpsEl = document.getElementById("rps")!;
 const errsEl = document.getElementById("errs")!;
+const podsEl = document.getElementById("pods")!;
 
 // State
 let targetUsers = 0, workMs = 10;
@@ -131,6 +132,18 @@ async function pollMetrics() {
 }
 setInterval(pollMetrics, 500);
 
-
+// Poll K8s API every 5s via kubectl proxy
+async function pollPods() {
+  try {
+    const r = await fetch("/api/v1/namespaces/demo-autoscale/pods?labelSelector=app=cpu-demo");
+    const data = await r.json();
+    const count = data.items?.length || 0;
+    podsEl.textContent = String(count);
+  } catch (e) {
+    podsEl.textContent = "?";
+  }
+}
+setInterval(pollPods, 1000);
+pollPods();
 
 loop();
