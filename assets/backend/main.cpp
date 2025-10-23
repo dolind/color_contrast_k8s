@@ -111,6 +111,22 @@ int main() {
     res.set_content(buf, "application/json");
 });
 
+svr.Get("/pods", [&](const httplib::Request&, httplib::Response& res) {
+    FILE* pipe = popen("kubectl get pods -n demo-autoscale -l app=backend --no-headers | wc -l", "r");
+    if (!pipe) {
+        res.status = 500;
+        res.set_content("{\"count\":0}", "application/json");
+        return;
+    }
+
+    int count = 0;
+    fscanf(pipe, "%d", &count);
+    pclose(pipe);
+
+    char buf[64];
+    snprintf(buf, sizeof(buf), "{\"count\":%d}", count);
+    res.set_content(buf, "application/json");
+});
 
 
     std::cout << "Listening on 0.0.0.0:8080" << std::endl;
