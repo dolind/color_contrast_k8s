@@ -74,10 +74,10 @@ spec:
         - containerPort: 8080
         resources:
           requests:
-            cpu: "200m"
+            cpu: "100m"
             memory: "64Mi"
           limits:
-            cpu: "1600m"
+            cpu: "800m" # can burst to 0.8 core
             memory: "128Mi"
         livenessProbe:
           httpGet:
@@ -126,4 +126,4 @@ spec:
         name: cpu
         target:
           type: AverageValue
-          averageValue: "800m"
+          averageValue: "400m"  # scale if pods average 0.4 cores
