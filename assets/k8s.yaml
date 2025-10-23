@@ -120,6 +120,19 @@ spec:
     name: backend
   minReplicas: 1
   maxReplicas: 6
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 30        # wait only 30 s before downscaling
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
   metrics:
     - type: Resource
       resource:
