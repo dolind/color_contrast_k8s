@@ -54,6 +54,11 @@ double compute_cpu_pct(CpuSample prev, CpuSample now) {
     return 100.0 * (double(proc_diff) / double(total_diff));
 }
 
+double parseCpu(const std::string& s) {
+    if (s.ends_with("m")) return std::stod(s.substr(0, s.size()-1)); // millicores
+    return std::stod(s) * 1000.0; // cores -> millicores
+}
+
 int main() {
     httplib::Server svr;
     std::cout << "Starting server" << std::endl;
@@ -84,40 +89,48 @@ int main() {
 
     // Metrics is for dashboard graphs
     // We return a json
-    svr.Get("/metrics", [&](const httplib::Request &, httplib::Response &res) {
-        std::lock_guard<std::mutex> lk(mtx);
-        CpuSample now = read_cpu();
-        auto ts = steady_clock::now();
-        double pct = compute_cpu_pct(last, now);
-        double uptime = duration_cast<seconds>(ts - last_ts).count();
-        last = now;
-        last_ts = ts;
+   svr.Get("/metrics", [&](const httplib::Request &, httplib::Response &res) {
+    std::ifstream token_file("/var/run/secrets/kubernetes.io/serviceaccount/token");
+    std::string token((std::istreambuf_iterator<char>(token_file)), {});
+    std::string ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt";
 
-        std::ostringstream json;
-        json << "{";
-        json << "\"cpu_pct\":" << pct << ",";
-        json << "\"uptime\":" << uptime << ",";
-        json << "\"timestamp\":" << duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-        json << "}";
-        res.set_content(json.str(), "application/json");
-    });
+    const char* host = std::getenv("KUBERNETES_SERVICE_HOST");
+    const char* port = std::getenv("KUBERNETES_SERVICE_PORT");
+    httplib::SSLClient cli(host, std::stoi(port));
+    cli.set_ca_cert_path(ca_path.c_str());
+    cli.enable_server_certificate_verification(true);
 
-    // pod stats
-    svr.Get("/pods", [&](const httplib::Request&, httplib::Response& res) {
-    std::string output;
-    FILE* pipe = popen("kubectl get pods -n demo-autoscale -l app=backend -o json", "r");
-    if (!pipe) {
+    httplib::Headers headers = {{"Authorization", "Bearer " + token}};
+    auto r = cli.Get("/apis/metrics.k8s.io/v1beta1/nodes", headers);
+    if (!r || r->status != 200) {
         res.status = 500;
-        res.set_content("{\"error\": \"failed to run kubectl\"}", "application/json");
+        res.set_content("{\"error\":\"failed to query metrics API\"}", "application/json");
         return;
     }
-    char buffer[4096];
-    while (fgets(buffer, sizeof(buffer), pipe)) {
-        output += buffer;
+
+    // parse and aggregate CPU usage
+    rapidjson::Document doc;
+    doc.Parse(r->body.c_str());
+    double totalUsage = 0.0;
+    double totalAlloc = 0.0;
+
+    for (auto& node : doc["items"].GetArray()) {
+        auto cpuStr = node["usage"]["cpu"].GetString();          // e.g. "123m"
+        auto allocStr = node["status"]["allocatable"]["cpu"].GetString(); // e.g. "2000m" or "2"
+        totalUsage += parseCpu(cpuStr);
+        totalAlloc += parseCpu(allocStr);
     }
-    pclose(pipe);
-    res.set_content(output, "application/json");
+
+    double pct = (totalAlloc > 0) ? (totalUsage / totalAlloc) * 100.0 : 0.0;
+
+    std::ostringstream json;
+    json << "{";
+    json << "\"cpu_pct\":" << pct;
+    json << "}";
+    res.set_content(json.str(), "application/json");
 });
+
+
 
     std::cout << "Listening on 0.0.0.0:8080" << std::endl;
     svr.listen("0.0.0.0", 8080);

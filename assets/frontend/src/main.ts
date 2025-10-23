@@ -135,11 +135,10 @@ setInterval(pollMetrics, 500);
 // Poll K8s API every 5s via kubectl proxy
 async function pollPods() {
   try {
-    const r = await fetch("/pods");
-    const data = await r.json();
-    const count = data.items?.length || 0;
-    podsEl.textContent = String(count);
-  } catch (e) {
+    const res = await fetch("/dnslookup"); // backend just runs `dig backend.default.svc.cluster.local +short`
+    const { ips } = await res.json();
+    podsEl.textContent = String(ips.length);
+  } catch {
     podsEl.textContent = "?";
   }
 }
