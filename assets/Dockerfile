@@ -26,6 +26,6 @@ FROM scratch
 COPY --from=build /src/build/cpu-demo /cpu-demo
 WORKDIR /app
 # frontend/dist should already exist before docker build (compile TS -> JS)
-COPY frontend/dist ./public
+COPY --from=frontend /app/frontend/dist ./public
 EXPOSE 8080
 ENTRYPOINT ["/cpu-demo"]
