@@ -1,9 +1,10 @@
 {
   "title": "Kubernetes CPU Autoscaling Demo",
   "description": "Run a TypeScript + C++ web app inside Kubernetes and observe Horizontal Pod Autoscaling react to CPU load.",
-  "difficulty": "beginner",
-  "time": "10 minutes",
   "details": {
+    "intro": {
+      "text": "intro.md"
+    },
     "steps": [
       { "title": "Run the Demo", "text": "step1.md" }
     ]
