@@ -22,8 +22,8 @@ const w = 650, h = 220, m = {top: 30, right: 30, bottom: 35, left: 50};
 const x = d3.scaleLinear().range([m.left, w - m.right]);
 const yResp = d3.scaleLinear().range([h - m.bottom, m.top]);
 const yCpu  = d3.scaleLinear().range([h - m.bottom, m.top]);
-const lineResp = d3.line<Sample>().x(d => x(d.t)).y(d => yResp(d.resp)).curve(d3.curveMonotoneX);
-const lineCpu  = d3.line<Sample>().x(d => x(d.t)).y(d => yCpu(d.cpu)).curve(d3.curveMonotoneX);
+const lineResp = d3.line<Sample>().x((d: { t: any; }) => x(d.t)).y((d: { resp: any; }) => yResp(d.resp)).curve(d3.curveMonotoneX);
+const lineCpu  = d3.line<Sample>().x((d: { t: any; }) => x(d.t)).y((d: { cpu: any; }) => yCpu(d.cpu)).curve(d3.curveMonotoneX);
 const svgResp = d3.select("#respGraph"), svgCpu = d3.select("#cpuGraph");
 
 // --- Slider events ---
@@ -38,11 +38,11 @@ workInput.oninput = e => {
 };
 
 
-// --- updateGraphs with current labels ---
+// dynamic output (graphs and labels)
 function updateGraphs(currentResp: number, currentCpu: number) {
   const now = (performance.now() - start) / 1000;
   x.domain([Math.max(0, now - 60), now]);
-  yResp.domain([0, d3.max(samples, d => d.resp)! * 1.2 || 100]);
+  yResp.domain([0, d3.max(samples, (d: { resp: any; }) => d.resp)! * 1.2 || 100]);
   yCpu.domain([0, 100]);
 
   // Response graph
@@ -102,14 +102,15 @@ function fireCompute() {
     .finally(() => inflight--);
 }
 
-// --- Main loop ---
+// We keep firing compute requests until we hit the target number of users
+// Eventually, this leads to saturation of the server
 function loop() {
   while (inflight < targetUsers) fireCompute();
   inflightEl.textContent = String(inflight);
   requestAnimationFrame(loop);
 }
 
-// --- Poll metrics + update graphs ---
+// Polling server for metrics, every 500ms for fluent display
 async function pollMetrics() {
   try {
     const r = await fetch("/metrics");
