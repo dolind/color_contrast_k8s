@@ -20,8 +20,8 @@ spec:
     spec:
       containers:
       - name: cpu-demo
-        image: controlplane:5000/cpu-demo:latest
-        imagePullPolicy: IfNotPresent       # <- local image only
+        image: cpu-demo:latest
+        imagePullPolicy: Never
         ports:
         - containerPort: 8080
         resources:
