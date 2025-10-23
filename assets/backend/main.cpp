@@ -54,11 +54,6 @@ double compute_cpu_pct(CpuSample prev, CpuSample now) {
     return 100.0 * (double(proc_diff) / double(total_diff));
 }
 
-double parseCpu(const std::string& s) {
-    if (s.ends_with("m")) return std::stod(s.substr(0, s.size()-1)); // millicores
-    return std::stod(s) * 1000.0; // cores -> millicores
-}
-
 int main() {
     httplib::Server svr;
     std::cout << "Starting server" << std::endl;
@@ -89,45 +84,31 @@ int main() {
 
     // Metrics is for dashboard graphs
     // We return a json
-   svr.Get("/metrics", [&](const httplib::Request &, httplib::Response &res) {
-    std::ifstream token_file("/var/run/secrets/kubernetes.io/serviceaccount/token");
-    std::string token((std::istreambuf_iterator<char>(token_file)), {});
-    std::string ca_path = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt";
-
-    const char* host = std::getenv("KUBERNETES_SERVICE_HOST");
-    const char* port = std::getenv("KUBERNETES_SERVICE_PORT");
-    httplib::SSLClient cli(host, std::stoi(port));
-    cli.set_ca_cert_path(ca_path.c_str());
-    cli.enable_server_certificate_verification(true);
-
-    httplib::Headers headers = {{"Authorization", "Bearer " + token}};
-    auto r = cli.Get("/apis/metrics.k8s.io/v1beta1/nodes", headers);
-    if (!r || r->status != 200) {
+    svr.Get("/metrics", [&](const httplib::Request &, httplib::Response &res) {
+    FILE* pipe = popen("kubectl top nodes --no-headers", "r");
+    if (!pipe) {
         res.status = 500;
-        res.set_content("{\"error\":\"failed to query metrics API\"}", "application/json");
+        res.set_content("{\"error\": \"kubectl failed\"}", "application/json");
         return;
     }
 
-    // parse and aggregate CPU usage
-    rapidjson::Document doc;
-    doc.Parse(r->body.c_str());
-    double totalUsage = 0.0;
-    double totalAlloc = 0.0;
+    double totalUsed = 0;
+    double totalCap = 0;
+    char node[128], cpu[32], mem[32];
 
-    for (auto& node : doc["items"].GetArray()) {
-        auto cpuStr = node["usage"]["cpu"].GetString();          // e.g. "123m"
-        auto allocStr = node["status"]["allocatable"]["cpu"].GetString(); // e.g. "2000m" or "2"
-        totalUsage += parseCpu(cpuStr);
-        totalAlloc += parseCpu(allocStr);
+    while (fscanf(pipe, "%127s %31s %31s", node, cpu, mem) == 3) {
+        double used = atof(cpu);
+        if (strchr(cpu, 'm')) used = used; else used *= 1000.0;
+        totalUsed += used;
+        // hardcode capacity (example: 4000m per node)
+        totalCap += 4000.0;
     }
+    pclose(pipe);
 
-    double pct = (totalAlloc > 0) ? (totalUsage / totalAlloc) * 100.0 : 0.0;
-
-    std::ostringstream json;
-    json << "{";
-    json << "\"cpu_pct\":" << pct;
-    json << "}";
-    res.set_content(json.str(), "application/json");
+    double pct = totalCap > 0 ? (totalUsed / totalCap) * 100.0 : 0.0;
+    char buf[128];
+    snprintf(buf, sizeof(buf), "{\"cpu_pct\":%.1f}", pct);
+    res.set_content(buf, "application/json");
 });
 
 
