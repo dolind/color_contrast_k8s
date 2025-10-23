@@ -114,7 +114,7 @@ function loop() {
 // Polling server for metrics, every 500ms for fluent display
 async function pollMetrics() {
   try {
-    const r = await fetch("http://backend:8080/metrics");
+    const r = await fetch("https://backend:8080/metrics");
     const data = await r.json();
     const now = (performance.now() - start) / 1000;
     const respAvg = d3.mean(respTimes) || 0;
@@ -135,7 +135,7 @@ setInterval(pollMetrics, 500);
 // Poll K8s API every 5s via kubectl proxy
 async function pollPods() {
   try {
-    const r = await fetch("http://backend:8080/api/v1/namespaces/demo-autoscale/pods?labelSelector=app=cpu-demo");
+    const r = await fetch("https://backend:8080/api/v1/namespaces/demo-autoscale/pods?labelSelector=app=cpu-demo");
     const data = await r.json();
     const count = data.items?.length || 0;
     podsEl.textContent = String(count);
