@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>CPU Autoscaling Demo</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 20px;
+            width: 90%
+        }
+
+        input[type=range] {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .pill {
+            background: #eee;
+            border-radius: 999px;
+            padding: 4px 10px;
+            margin-right: 6px;
+            display: inline-block;
+        }
+
+        svg {
+            border: 1px solid #ccc;
+            margin-top: 10px;
+        }
+
+        h2 {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+<h2>CPU Autoscaling Demo</h2>
+<p>Move the slider to simulate concurrent users. Higher load → higher CPU → Kubernetes scales pods.</p>
+
+<label><b>Active users:</b> <span id="usersVal">0</span></label>
+<input id="users" type="range" min="0" max="100" step="1" value="0">
+<label><b>Work time (ms):</b> <span id="workVal">10</span></label>
+<input id="work" type="range" min="10" max="500" step="10" value="10">
+
+
+<div class="pill">Inflight: <span id="inflight">0</span></div>
+<div class="pill">Completed/s: <span id="rps">0</span></div>
+<div class="pill">Errors: <span id="errs">0</span></div>
+<div class="pill">Pods: <span id="pods">1</span></div>
+<p>
+    - Inflight: is the number of requests that have been sent to the backend but not yet received a response.
+    Analog to real usage: the number of users waiting for a response.
+    <br>
+    - Completed: Completed requests per second. Real usage: users that have received a response.
+    <br>
+    - Errors: Requests that failed. Real usage: users that encountered an error.
+    <br>
+    - Pods: Number of pods in the deployment.
+</p>
+
+<svg id="respGraph"  style="width: 90%; height: 220px;"></svg>
+<br>
+<svg id="cpuGraph"  style="width: 90%; height: 220px;"></svg>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
