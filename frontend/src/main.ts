@@ -135,28 +135,56 @@ workInput.oninput = e => {
 };
 
 
-function fireCompute() {
-    inflight++;
-    const t0 = performance.now();
+function fireUser() {
+    //let lastRequestFinished = performance.now();
+    function loop() {
+        const startRequest = performance.now();
+        fetch(`/compute?ms=${workMs}`)
+            .then(r => {
+                if (r.ok) {
+                    respTimes.push(performance.now() - startRequest);
+                    done++;
+                } else {
+                    errs++;
+                }
+            })
+            .catch(() => errs++)
+            .finally(() => {
+                inflight--;
 
-    fetch(`/compute?ms=${workMs}`)
-        .then(r => {
-            if (!r.ok) errs++;
-            else {
-                respTimes.push(performance.now() - t0);
-                done++;
-            }
-        })
-        .catch(() => errs++)
-        .finally(() => inflight--);
+                // Realistic user: wait before next action
+                const thinkTime = 200 + Math.random() * 300;  // 200–500ms
+
+                // Call method again, if not saturated
+                // This simulates real user behavior
+                setTimeout(() => {
+                    //const now = performance.now();
+                    //const timeSinceLast = now - lastRequestFinished;
+                    //console.log(`user think time: ${timeSinceLast.toFixed(0)} ms`);
+
+                    // lastRequestFinished = now;
+
+                    if (inflight < targetUsers) {
+                        inflight++;
+                        fireUser();
+                    }
+                }, thinkTime);
+            });
+    }
+
+    loop();
 }
 
-// We keep firing compute requests until we hit the target number of users
-// Eventually, this leads to saturation of the server
+// We keep firing compute requests until we hit the target number of users.
+// But every new fireUser stays alive, forever as it keeps calling itself.
+// Eventually, this leads to saturation of the server.
 setInterval(() => {
-    while (inflight < targetUsers) fireCompute();
+    while (inflight < targetUsers) {
+        inflight++;
+        fireUser();
+    }
     inflightEl.textContent = String(inflight);
-}, 10);
+}, 500);
 
 
 // Polling server for metrics
