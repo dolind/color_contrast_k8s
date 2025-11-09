@@ -33,6 +33,7 @@ let workMs = 10;
 let respTimes: number[] = [];
 let samples: Sample[] = [];
 let lastPodCount = 1;
+let userEvents: { t: number; users: number }[] = [];
 
 const start = performance.now();
 const WINDOW_SECONDS = 900;
@@ -126,12 +127,36 @@ function updateGraphs(resp: number, cpu: number) {
         .attr("stroke", d => d.scaleEvent === "up" ? "green" : "red")
         .attr("stroke-width", 2)
         .attr("stroke-dasharray", "4 2");
+
+    svgResp.selectAll(".user-marker")
+        .data(userEvents)
+        .join("line")
+        .attr("class", "user-marker")
+        .attr("x1", d => x(d.t))
+        .attr("x2", d => x(d.t))
+        .attr("y1", m.top)
+        .attr("y2", h - m.bottom)
+        .attr("stroke", "orange")
+        .attr("stroke-width", 2)
+        .attr("stroke-dasharray", "3 3");
+
+    svgResp.selectAll(".user-label")
+        .data(userEvents)
+        .join("text")
+        .attr("class", "user-label")
+        .attr("x", d => x(d.t) + 4)
+        .attr("y", m.top + 12)
+        .attr("font-size", "11px")
+        .attr("fill", "orange")
+        .text(d => `${d.users}`);
 }
 
 // Slider events
 usersInput.oninput = e => {
     targetUsers = parseInt((e.target as HTMLInputElement).value);
     usersLabel.textContent = String(targetUsers);
+    const now = (performance.now() - start) / 1000;
+    userEvents.push({ t: now, users: targetUsers });
     worker.postMessage({ targetUsers });
 };
 

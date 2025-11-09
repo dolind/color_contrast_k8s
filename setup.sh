@@ -1,5 +1,5 @@
 # Start Minikube
-minikube start
+minikube start --cpus=6 --memory=8g
 
 # We need metrics, therefore we use the metrics server
 minikube addons enable metrics-server
