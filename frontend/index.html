@@ -32,6 +32,21 @@
         h2 {
             margin-bottom: 0;
         }
+
+        .graph-caption {
+            font-size: 13px;
+            margin: 3px 0 15px 5%;
+            color: #444;
+        }
+
+        .legend-box {
+            display: inline-block;
+            width: 14px;
+            height: 4px;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
     </style>
 </head>
 <body>
@@ -50,21 +65,36 @@
 <div class="pill">Pods: <span id="pods">1</span></div>
 <p>
     - Inflight: Number of requests currently being processed by the backend.
-Real-world analogy: users actively waiting for a response (concurrent active users).
+    Real-world analogy: users actively waiting for a response (concurrent active users).
     <br>
     - Completed: Requests that finished successfully during the last interval (~1s).
-Real-world analogy: completed response received by all users together.
+    Real-world analogy: completed response received by all users together.
     <br>
     - Errors: Requests that failed (HTTP error or network error).
-Real-world analogy: users who experienced a failure instead of a valid response.
+    Real-world analogy: users who experienced a failure instead of a valid response.
     <br>
     - Pods: Number of backend instances currently running (what the HPA scales).
 </p>
 
-<svg id="respGraph"  style="width: 90%; height: 220px;"></svg>
-<br>
-<svg id="cpuGraph"  style="width: 90%; height: 220px;"></svg>
+<svg id="respGraph" style="width: 90%; height: 220px;"></svg>
+<div class="graph-caption">
+    <span class="legend-box" style="background: steelblue;"></span> Response time (ms)
+    <span class="legend-box" style="background: green;"></span> Scaling Up
+    <span class="legend-box" style="background: red;"></span> Scaling Down
+    <span class="legend-box" style="background: orange;"></span> UserNumber Change
+</div>
+
+<svg id="cpuGraph" style="width: 90%; height: 220px;"></svg>
+<div class="graph-caption">
+    <span class="legend-box" style="background: tomato;"></span> CPU usage (% of pod request)
+    <span class="legend-box" style="background: orange; border-style: dashed;"></span> HPA target (80%)
+</div>
 
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
+
+
+<br>
+
+

@@ -5,8 +5,16 @@ let inflight = 0;
 let done = 0;
 let errs = 0;
 
+// We use user ids, to avoid issues scaling down and cleanly terminating active users if number of users decreased
+let nextUserId = 1;
+const activeUsers = new Set<number>();
+
 // One simulated user loop (runs forever)
-function fireUser() {
+function fireUser(id: number) {
+    if (!activeUsers.has(id)) {
+        return;
+    }
+    inflight++;
     const startRequest = performance.now();
 
     fetch(`/compute?ms=${workMs}`)
@@ -19,7 +27,7 @@ function fireUser() {
         })
         .catch(() => errs++)
         .finally(() => {
-            inflight--;
+
             const duration = performance.now() - startRequest;
 
             // Realistic user: wait before next action
@@ -31,10 +39,11 @@ function fireUser() {
             // Call method again, if not saturated
             // This simulates real user behavior
             setTimeout(() => {
-                if (inflight < targetUsers) {
-                    inflight++;
-                    fireUser();
+                inflight--;
+                if (activeUsers.has(id) && inflight < targetUsers) {
+                    fireUser(id);
                 }
+
             }, thinkTime);
         });
 }
@@ -43,25 +52,30 @@ function fireUser() {
 // But every new fireUser stays alive, forever as it keeps calling itself.
 // Eventually, this leads to saturation of the server.
 setInterval(() => {
-    while (inflight < targetUsers) {
-        inflight++;
-        fireUser();
+    while (activeUsers.size < targetUsers) {
+        const id = nextUserId++;
+        activeUsers.add(id);
+        fireUser(id);
     }
 
-    // Send metrics back to main thread for UI
-    // inside fetch().then() handling
+    // REMOVE extra users if target went down
+    while (activeUsers.size > targetUsers) {
+        // pick any user id to deactivate
+        const idToStop = activeUsers.values().next().value;
+        activeUsers.delete(idToStop);
+        // user loop will exit on next check
+    }
 
-
-// periodically send stats to UI
+    // periodically send stats to UI
     postMessage({type: "stats", inflight, done, errs});
 
 
-    // Done counter should reset every interval (same behavior as before)
+    // Done counter should reset every interval
     done = 0;
-}, 500);
+}, 1000);
 
 // === Receive updates from the frontend ===
-onmessage = (e: MessageEvent) => {
+self.onmessage = (e: MessageEvent) => {
     if (e.data.targetUsers !== undefined) targetUsers = e.data.targetUsers;
     if (e.data.workMs !== undefined) workMs = e.data.workMs;
 };
