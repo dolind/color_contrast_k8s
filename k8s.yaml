@@ -194,14 +194,14 @@ spec:
       policies:
         - type: Percent
           value: 200
-          periodSeconds: 5
+          periodSeconds: 15
 
     scaleUp:
-      stabilizationWindowSeconds: 10
+      stabilizationWindowSeconds: 0
       policies:
         - type: Pods
           value: 1
-          periodSeconds: 10
+          periodSeconds: 15
   metrics:
     - type: Resource
       resource:
