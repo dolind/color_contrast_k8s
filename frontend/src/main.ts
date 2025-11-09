@@ -1,4 +1,9 @@
 import * as d3 from "d3";
+// We use a web worker, so requests stay alive if window focus changes
+const worker = new Worker(new URL("./worker.ts", import.meta.url), {
+  type: "module",
+});
+
 
 interface Sample {
     t: number;
@@ -24,7 +29,7 @@ const podsEl = document.getElementById("pods")!;
 // State
 let targetUsers = 0;
 let workMs = 10;
-let inflight = 0, done = 0, errs = 0;
+
 let respTimes: number[] = [];
 let samples: Sample[] = [];
 let lastPodCount = 1;
@@ -127,64 +132,31 @@ function updateGraphs(resp: number, cpu: number) {
 usersInput.oninput = e => {
     targetUsers = parseInt((e.target as HTMLInputElement).value);
     usersLabel.textContent = String(targetUsers);
+    worker.postMessage({ targetUsers });
 };
 
 workInput.oninput = e => {
     workMs = parseInt((e.target as HTMLInputElement).value);
     workLabel.textContent = String(workMs);
+    worker.postMessage({ workMs });
+};
+
+worker.onmessage = e => {
+    if (e.data.type === "stats") {
+        const { inflight, done, errs } = e.data;
+        inflightEl.textContent = String(inflight);
+        rpsEl.textContent = String(done);
+        errsEl.textContent = String(errs);
+        return;
+    }
+
+    if (e.data.type === "resp") {
+        respTimes.push(e.data.duration);
+    }
 };
 
 
-function fireUser() {
-    //let lastRequestFinished = performance.now();
-    function loop() {
-        const startRequest = performance.now();
-        fetch(`/compute?ms=${workMs}`)
-            .then(r => {
-                if (r.ok) {
-                    respTimes.push(performance.now() - startRequest);
-                    done++;
-                } else {
-                    errs++;
-                }
-            })
-            .catch(() => errs++)
-            .finally(() => {
-                inflight--;
 
-                // Realistic user: wait before next action
-                const thinkTime = 200 + Math.random() * 300;  // 200–500ms
-
-                // Call method again, if not saturated
-                // This simulates real user behavior
-                setTimeout(() => {
-                    //const now = performance.now();
-                    //const timeSinceLast = now - lastRequestFinished;
-                    //console.log(`user think time: ${timeSinceLast.toFixed(0)} ms`);
-
-                    // lastRequestFinished = now;
-
-                    if (inflight < targetUsers) {
-                        inflight++;
-                        fireUser();
-                    }
-                }, thinkTime);
-            });
-    }
-
-    loop();
-}
-
-// We keep firing compute requests until we hit the target number of users.
-// But every new fireUser stays alive, forever as it keeps calling itself.
-// Eventually, this leads to saturation of the server.
-setInterval(() => {
-    while (inflight < targetUsers) {
-        inflight++;
-        fireUser();
-    }
-    inflightEl.textContent = String(inflight);
-}, 500);
 
 
 // Polling server for metrics
@@ -218,9 +190,6 @@ async function pollMetrics() {
 
         updateGraphs(respAvg, cpuPct);
 
-        rpsEl.textContent = String(done);
-        errsEl.textContent = String(errs);
-        done = 0;
     } catch {
         /* silent */
     }
