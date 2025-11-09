@@ -49,14 +49,16 @@
 <div class="pill">Errors: <span id="errs">0</span></div>
 <div class="pill">Pods: <span id="pods">1</span></div>
 <p>
-    - Inflight: is the number of requests that have been sent to the backend but not yet received a response.
-    Analog to real usage: the number of users waiting for a response.
+    - Inflight: Number of requests currently being processed by the backend.
+Real-world analogy: users actively waiting for a response (concurrent active users).
     <br>
-    - Completed: Completed requests per second. Real usage: users that have received a response.
+    - Completed: Requests that finished successfully during the last interval (~1s).
+Real-world analogy: users who received a completed response.
     <br>
-    - Errors: Requests that failed. Real usage: users that encountered an error.
+    - Errors: Requests that failed (HTTP error or network error).
+Real-world analogy: users who experienced a failure instead of a valid response.
     <br>
-    - Pods: Number of pods in the deployment.
+    - Pods: Number of backend instances currently running (what the HPA scales).
 </p>
 
 <svg id="respGraph"  style="width: 90%; height: 220px;"></svg>
